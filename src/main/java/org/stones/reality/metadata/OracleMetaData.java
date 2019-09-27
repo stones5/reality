@@ -5,29 +5,36 @@ import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.gson.Gson;
 
 public class OracleMetaData implements IMetaData {
 
+	private static final Logger LOGGER = LoggerFactory.getLogger(OracleMetaData.class);
+
 	Connection conn = null;
-	String query = null;
-	String schemaName = null;
 	Statement stmt = null;
 	ResultSet rs = null;
 	ResultSet rs2 = null;
 	ResultSet table = null;
+	ResultSet column = null;
 	ResultSetMetaData rsmd = null;
 	DatabaseMetaData data = null;
+	DatabaseMetaData data2 = null;
 
 	public void connection(String url, String username, String password) {
 		try {
 			Class.forName("oracle.jdbc.driver.OracleDriver");
 			conn = DriverManager.getConnection(url, username, password);
-			System.out.println("����Ǿ����ϴ�.");
-		} catch (Exception e) {
-			e.printStackTrace();
+			System.out.println("연결");
+		} catch (ClassNotFoundException | SQLException e) {
+			LOGGER.error("", e);
 		}
 	}
 
@@ -42,10 +49,10 @@ public class OracleMetaData implements IMetaData {
 			databaseInfo.setDriverName(data.getDriverName());
 			databaseInfo.setProductName(data.getDatabaseProductName());
 			databaseInfo.setProductVersion(data.getDatabaseProductVersion());
-
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (SQLException e) {
+			LOGGER.error("", e);
 		}
+
 		return databaseInfo;
 	}
 
@@ -63,60 +70,73 @@ public class OracleMetaData implements IMetaData {
 			 * for (int i=0; i<schemaList.size(); i++) {
 			 * System.out.println(schemaList.get(i)); }
 			 */
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (SQLException e) {
+			LOGGER.error("", e);
 		}
 		return schemaList;
 	}
 
 	@Override
-	public TableInfo getTableInfo(String schemaName1) {
+	public ArrayList<TableInfo> getTableInfo(String schemaName1) {
 
-		TableInfo tableInfo = new TableInfo();
+		ArrayList<TableInfo> tableList = new ArrayList<TableInfo>();
 
 		try {
 			data = conn.getMetaData();
-			//System.out.println("��Ű�� �� : " + schemaName1);
+			// System.out.println("schemaName : " + schemaName1);
 			table = data.getTables(null, schemaName1, null, new String[] { "TABLE" });
 
 			while (table.next()) {
+
+				TableInfo tableInfo = new TableInfo();
+
 				tableInfo.setTableName(table.getString("TABLE_NAME"));
 				tableInfo.setTableCat(table.getString("TABLE_CAT"));
 				tableInfo.setTableType(table.getString("TABLE_TYPE"));
 				tableInfo.setTableSchem(table.getString("TABLE_SCHEM"));
+
+				tableList.add(tableInfo);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (SQLException e) {
+			LOGGER.error("", e);
 		}
-		return tableInfo;
+		return tableList;
 	}
 
 	@Override
-	public ColumnInfo getColumnNameInfo(String tableName) {
+	public ArrayList<ColumnInfo> getColumnInfo(String schemaName, String tableName) {
 
-		ColumnInfo columnInfo = new ColumnInfo();
-		query = "SELECT * FROM " + tableName;
+		ArrayList<ColumnInfo> columnList = new ArrayList<ColumnInfo>();
 		try {
-			stmt = conn.createStatement();
-			rs2 = stmt.executeQuery(query);
-			rsmd = rs2.getMetaData();
+			data2 = conn.getMetaData();
 
-			int cols = rsmd.getColumnCount();
-			columnInfo.setColumnCnt(cols);
-			for (int i = 0; i < cols; i++) {
-				columnInfo.setColumnName(rsmd.getColumnName(i + 1));
-				columnInfo.setColumnTypeName(rsmd.getColumnTypeName(i + 1));
-				columnInfo.setColumnType(rsmd.getColumnType(i + 1));
+			column = data2.getColumns(null, schemaName, tableName, null);
+			while (column.next()) {
+
+				ColumnInfo columnInfo = new ColumnInfo();
+
+				columnInfo.setColumnName(column.getString("COLUMN_NAME"));
+				columnInfo.setColumnSize(column.getString("COLUMN_SIZE"));
+				columnInfo.setColumnTypeName(column.getString("TYPE_NAME"));
+				columnInfo.setColumnType(column.getString("DATA_TYPE"));
+				columnInfo.setColumnDef(column.getString("COLUMN_DEF"));
+				columnInfo.setNulllable(column.getString("IS_NULLABLE"));
+				/*
+				 * System.out.println(column.getString("COLUMN_NAME"));
+				 * System.out.println(column.getString("COLUMN_SIZE"));
+				 * System.out.println(column.getString("DATA_TYPE"));
+				 */
+				columnList.add(columnInfo);
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (SQLException e) {
+			LOGGER.error("", e);
 		}
-		return columnInfo;
+		return columnList;
 	}
 
 	public static void main(String[] args) {
 
-		String userName = "user01";
+		/*String userName = "user01";
 		String pw = "user01";
 		String url = "jdbc:oracle:thin:@localhost:1521:xe";
 
@@ -127,8 +147,15 @@ public class OracleMetaData implements IMetaData {
 		d.connection(url, userName, pw);
 		d.getDatabaseMetaData();
 		d.getSchemaList();
-		d.getTableInfo(schemaName1);
-		d.getColumnNameInfo(tableName1);
 
+		Gson gson = new Gson();
+		ArrayList<TableInfo> t1 = new ArrayList<TableInfo>();
+		t1 = d.getTableInfo(schemaName1);
+
+		for (int i = 0; i < 2; i++) {
+			TableInfo t = new TableInfo();
+			t = t1.get(i);
+			System.out.println(gson.toJson(t)); 
+		} */
 	}
 }

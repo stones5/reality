@@ -2,6 +2,7 @@ package org.stones.reality.metadata;
 
 import java.util.ArrayList;
 
+
 public interface IMetaData {
 	
 	public void connection(String url, String username, String password);
@@ -10,8 +11,8 @@ public interface IMetaData {
 	
 	public ArrayList<String> getSchemaList();
 	
-	public TableInfo getTableInfo(String schemaName1);
+	public ArrayList<TableInfo> getTableInfo(String schemaName1);
 	
-	public ColumnInfo getColumnNameInfo(String tableName);
+	public ArrayList<ColumnInfo> getColumnInfo(String schemaName, String tableName);
 
 }
